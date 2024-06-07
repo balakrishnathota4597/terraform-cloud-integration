@@ -1,0 +1,74 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger: #trigger the branch
+- master
+
+pool: default
+  #vmImage: ubuntu-latest
+#we are deifnining execution steps 
+stages:
+  - stage: tfvalidate
+    jobs:
+      - job: validate 
+        steps: 
+         
+          - task: TerraformInstaller@1
+            displayName: Install Terraform
+            inputs:
+              terraformVersion: 'latest'
+          - task: TerraformTaskV4@4
+            displayName: Initializing
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              backendServiceArm: 'ado'
+              backendAzureRmResourceGroupName: 'terraform-storage-rg'
+              backendAzureRmStorageAccountName: 'terraformstate201212'
+              backendAzureRmContainerName: 'tfstatefiles'
+              backendAzureRmKey: 'tfstate'
+          - task: TerraformTaskV4@4
+            displayName: Validate
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+          - task: TerraformTaskV4@4
+            displayName: Planning to go to moon
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              environmentServiceNameAzureRM: 'ado'
+  - stage: tfapprove
+    jobs:
+      - job : approve
+        pool: server
+        timeoutInMinutes: 1
+        steps:
+          - task: ManualValidation@1
+            inputs:
+              notifyUsers: 'balakrishna.thota@gmail.com'
+              instructions: 'please approve it'
+  - stage: tfdestoy
+    jobs:
+      - job: destroy
+        pool: default
+        steps:
+        - task: TerraformInstaller@1
+          inputs:
+            terraformVersion: 'latest'
+        - task: TerraformTaskV4@4
+          inputs:
+            provider: 'azurerm'
+            command: 'init'
+            backendServiceArm: 'ado'
+            backendAzureRmResourceGroupName: 'terraform-storage-rg'
+            backendAzureRmStorageAccountName: 'terraformstate201212'
+            backendAzureRmContainerName: 'tfstatefiles'
+            backendAzureRmKey: 'tfstate'
+        - task: TerraformTaskV4@4
+          inputs:
+            provider: 'azurerm'
+            command: 'destroy'
+            environmentServiceNameAzureRM: 'ado'
